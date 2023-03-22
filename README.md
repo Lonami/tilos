@@ -24,7 +24,7 @@ it can solve the following puzzle just fine:
 > 🟥🟦🟦🟦
 > 🟥🟥🟥🟦
 
-but my poor python code seems to be too slow to solve any proper puzzle.
+but even after porting the python to rust, it's too slow to solve any proper puzzle. i have some ideas to improve it though.
 
 ## history
 
