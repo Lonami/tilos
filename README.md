@@ -4,7 +4,27 @@ my very own puzzle solver.
 
 ## what can it do?
 
-currently nothing, i just created the repository.
+it can solve the following puzzle just fine:
+
+> board:
+>
+> ⬛️⬛️⬛️⬛️
+> ⬛️⬛️⬛️⬛️
+>
+> pieces:
+>
+> 🟥⬛️⬛️
+> 🟥🟥🟥
+>
+> 🟦⬛️⬛️
+> 🟦🟦🟦
+>
+> possible solution:
+>
+> 🟥🟦🟦🟦
+> 🟥🟥🟥🟦
+
+but my poor python code seems to be too slow to solve any proper puzzle.
 
 ## history
 
