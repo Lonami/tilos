@@ -8,20 +8,20 @@ it can solve the following puzzle just fine:
 
 > board:
 >
-> ⬛️⬛️⬛️⬛️
+> ⬛️⬛️⬛️⬛️\
 > ⬛️⬛️⬛️⬛️
 >
 > pieces:
 >
-> 🟥⬛️⬛️
+> 🟥⬛️⬛️\
 > 🟥🟥🟥
 >
-> 🟦⬛️⬛️
+> 🟦⬛️⬛️\
 > 🟦🟦🟦
 >
 > possible solution:
 >
-> 🟥🟦🟦🟦
+> 🟥🟦🟦🟦\
 > 🟥🟥🟥🟦
 
 but even after porting the python to rust, it's too slow to solve any proper puzzle. i have some ideas to improve it though.
