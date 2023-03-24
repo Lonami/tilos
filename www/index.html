@@ -375,15 +375,19 @@ dlc road to gehenna
         }
       }
 
+      dim() {
+        if (this.rot === 90 || this.rot === 270) {
+          return [this.height, this.width]
+        } else {
+          return [this.width, this.height]
+        }
+      }
+
       setPos(cx, cy) {
         this.location = Location.FREE
-        if (this.rot === 90 || this.rot === 270) {
-          this.x = cx - this.height * 0.5
-          this.y = cy - this.width * 0.5
-        } else {
-          this.x = cx - this.width * 0.5
-          this.y = cy - this.height * 0.5
-        }
+        const [w, h] = this.dim()
+        this.x = cx - w * 0.5
+        this.y = cy - h * 0.5
       }
 
       pos() {
@@ -658,6 +662,16 @@ dlc road to gehenna
 
     Canvas.onclick = (e) => {
       if (dragging_piece !== null) {
+        const piece = pieces[dragging_piece]
+        const [w, h] = piece.dim()
+        bxp = (mouse_pos.x - w * 0.5 - board_rect.x) / board_rect.width
+        byp = (mouse_pos.y - h * 0.5 - board_rect.y) / board_rect.height
+        if ((-1 / board_rect.width) < bxp && bxp < 1 && (-1 / board_rect.height) < byp && byp < 1) {
+          piece.location = Location.BOARD
+          piece.x = Math.round(board_rect.width * bxp)
+          piece.y = Math.round(board_rect.height * byp)
+        }
+
         dragging_piece = null
         dirty = true
       } else {
