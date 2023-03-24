@@ -594,13 +594,6 @@ dlc road to gehenna
       ctx.setTransform(scale, 0, 0, scale, 0, 0)
       ctx.lineWidth = 1 / scale
 
-      // render in reverse (mouseover checks going forward)
-      for (let i = pieces.length; i--;) {
-        if (i !== dragging_piece) {
-          pieces[i].render()
-        }
-      }
-
       for (let i = 0; i <= board_rect.height; i += 1) {
         ctx.beginPath()
         ctx.moveTo(board_rect.x, board_rect.y + i)
@@ -615,6 +608,13 @@ dlc road to gehenna
         ctx.lineTo(board_rect.x + j, board_rect.y + board_rect.height)
         ctx.closePath()
         ctx.stroke()
+      }
+
+      // render in reverse (mouseover checks going forward)
+      for (let i = pieces.length; i--;) {
+        if (i !== dragging_piece) {
+          pieces[i].render()
+        }
       }
 
       if (dragging_piece !== null) {
