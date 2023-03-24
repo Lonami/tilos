@@ -30,6 +30,10 @@ but even after porting the python to rust, it's too slow to solve any proper puz
 
 there's an `.html` page inside the `www/` directory. you can download that and open it in your web-browser of choice. by default you'll find the puzzle i was stuck on, and you can try to solve it by hand, or create your own puzzle configurations.
 
+the web version also includes all puzzles from the game (i got those from a [steam guide with all the solutions][puzzle-solutions-guide], and i just wrote the board sizes and keys used for each). however it doesn't feel quite the same to use someone else's solution, so i still prefer to have my own code being able to solve the puzzles. looking up all puzzle solutions was just the easiest way to grab all in-game puzzles.
+
+[puzzle-solutions-guide]: https://steamcommunity.com/sharedfiles/filedetails/?id=354590899
+
 ## history
 
 i finally got to play "the talos principle", which i bought many years back. i do eventually give up on some of the puzzles when my brain can't think. but so far, the little tetris-like puzzle were not posing a challenge. until one did. and here we are!

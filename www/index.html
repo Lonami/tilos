@@ -29,11 +29,19 @@
     <h1>tilos</h1>
     <h2>settings</h2>
     <h3>rendering</h3>
-    <label for="autorefresh">autorefresh page</label>
-    <input id="autorefresh" type="checkbox">
+    <div>
+      <label for="autorefresh">autorefresh page</label>
+      <input id="autorefresh" type="checkbox">
 
-    <label for="scale">board scale</label>
-    <input id="scale" type="number" value="24" step="2" min="4">
+      <label for="scale">board scale</label>
+      <input id="scale" type="number" value="24" step="2" min="4">
+    </div>
+    <div>
+      <label for="puzzle">load talos' puzzle:</label>
+      <select id="puzzle">
+        <option value="">none (custom)</option>
+      </select>
+    </div>
 
     <h3>puzzle</h3>
     <div>
@@ -111,8 +119,96 @@
 
   </script>
   <script>
+    const PUZZLES_TXT = `world hub a
+  gate
+    tutorial
+      #w4h3pLLs
+    gate a
+      #w4h4pilLs
+    star gate a
+      #w8h5pttttlLssSS
+  tool
+    laser connector
+      #w4h3pttl
+    hexahedron
+      #w4h4pttls
+  messsenger island
+    red laser source
+      #w5h8pttiillossS
+    laser connector
+      #w4h10pttttillooS
+    hexahedron
+      #w6h6pttillLooS
+    fan
+      #w6h6pttllLLsss
+    messsenger tomb
+      #w4h5piLLoo
+world hub b
+  gate
+    gate b
+      #w4h5pttils
+    star gate b
+      #w8h5pttttiillLo
+  tool
+    fan
+      #w4h5pttlsS
+    recording
+      #w4h5pttLsS
+  messsenger island
+    red laser source
+      #w4h5pttils
+    blue laser source
+      #w8h6pttillLLLooSS
+    laser connector
+      #w4h10pttttiiLssS
+    laser connector
+      #w7h4pttiilsS
+    messsenger tomb
+      #w8h6pttiLLLoosssS
+world hub c
+  gate
+    gate c
+      #w4h6pttlLLs
+    star gate c
+      #w8h5pttiilLoosS
+  tool
+    platform
+      #w4h6pttilos
+  messsenger island
+    laser connector
+      #w4h5pttlsS
+    laser connector
+      #w4h5pttllL
+    blue laser source
+      #w7h4pttilLss
+    red laser source
+      #w8h6pttillLLLooss
+    messsenger tomb
+      #w6h6pillLLooss
+tower
+  floor 1
+    #w4h4pllss
+  floor 2
+    #w6h6pttttllllo
+  floor 3
+    #w8h5piiiillLLsS
+  floor 4
+    #w6h8pttttlLoossSS
+  floor 5
+    #w8h7pttttiilLoooosS
+  floor 6
+    #w6h6plllloSSSS
+dlc road to gehenna
+  star gate
+    #w5h8pttttiilSSS
+  admin gate
+    #w7h4pttillLL`
+  </script>
+  <script>
+
     // html elements
     const Scale = document.getElementById('scale')
+    const Puzzle = document.getElementById('puzzle')
     const BoardWidth = document.getElementById('board_width')
     const BoardHeight = document.getElementById('board_height')
     const TPieces = document.getElementById('t_pieces')
@@ -195,6 +291,24 @@
       color,
       path: parseSvgLikePath(path)
     }]
+
+    const parsePuzzleTxt = (txt) => {
+      const parsed = []
+      const sections = {}
+      let top_section = 0
+      txt.split('\n').filter((line) => line).forEach((line) => {
+        const [, ident, text] = line.match(/(\s*)(.+)/)
+        if (text.startsWith('#')) {
+          const sec = Object.entries(sections).filter(([k,]) => Number.parseInt(k) <= top_section)
+          sec.sort()
+          parsed.push([sec.map(([, v]) => v).join(' :: '), text])
+        } else {
+          sections[ident.length] = text
+          top_section = ident.length
+        }
+      })
+      return parsed
+    }
 
     // consts
     const SHAPES = Object.freeze(Object.fromEntries([
@@ -388,6 +502,10 @@
       dirty = true
     }
 
+    const updatePuzzleHash = () => {
+      window.location.hash = Puzzle.value
+    }
+
     const loadState = () => {
       loading_state = true
       let state
@@ -505,6 +623,7 @@
     // handlers
     window.onhashchange = loadState
     Scale.onchange = updateScale
+    Puzzle.onchange = updatePuzzleHash
     BoardWidth.onchange = updateBoardWidth
     BoardHeight.onchange = updateBoardHeight
     TPieces.onchange = updatePieces
@@ -565,6 +684,9 @@
     }
 
     // entry point
+    Puzzle.insertAdjacentHTML('beforeend', parsePuzzleTxt(PUZZLES_TXT)
+      .map(([section, hash]) => `<option value="${hash}">${section}</option>`))
+
     const mainLoop = () => {
       redraw((performance.now() - lastFrame) * 0.001)
       lastFrame = performance.now()
