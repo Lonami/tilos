@@ -296,9 +296,25 @@
         // the point is inside if there were an odd number of intersections.
 
         // vertical lines were pre-calculated at origin. offset input position to match.
-        const [dx, dy] = this.pos()
+        let [dx, dy] = this.pos()
         x -= dx
         y -= dy
+
+        // rotate position to the inverse of the piece rotation so it's as-if it matches.
+        const theta = -(this.rot * Math.PI / 180);
+        [x, y] = [
+          x * Math.cos(theta) - y * Math.sin(theta),
+          y * Math.cos(theta) + x * Math.sin(theta)
+        ]
+        // same top-left-like alignment as it's done for pieces.
+        switch (this.rot) {
+          case 0: [dx, dy] = [0, 0]; break
+          case 90: [dx, dy] = [0, this.height]; break
+          case 180: [dx, dy] = [this.width, this.height]; break
+          case 270: [dx, dy] = [this.width, 0]; break
+        }
+        x += dx
+        y += dy
 
         // in practice there is no need to interpolate the x position because all
         // our lines are either horizontal or vertical, but it's nice to get it right.
