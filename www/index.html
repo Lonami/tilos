@@ -70,13 +70,13 @@
     </div>
 
     <div>
-      <label for="l_pieces_flipped">number of mirrored l-pieces</label>
-      <input id="l_pieces_flipped" type="number" value="3" min="0">
+      <label for="L_pieces">number of mirrored l-pieces</label>
+      <input id="L_pieces" type="number" value="3" min="0">
     </div>
 
     <div>
-      <label for="s_pieces_flipped">number of mirrored s-pieces</label>
-      <input id="s_pieces_flipped" type="number" value="0" min="0">
+      <label for="S_pieces">number of mirrored s-pieces</label>
+      <input id="S_pieces" type="number" value="0" min="0">
     </div>
   </div>
   <div>
@@ -120,8 +120,8 @@
     const LPieces = document.getElementById('l_pieces')
     const OPieces = document.getElementById('o_pieces')
     const SPieces = document.getElementById('s_pieces')
-    const LPiecesFlipped = document.getElementById('l_pieces_flipped')
-    const SPiecesFlipped = document.getElementById('s_pieces_flipped')
+    const LFlippedPieces = document.getElementById('L_pieces')
+    const SFlippedPieces = document.getElementById('S_pieces')
     const Canvas = document.getElementById('canvas')
 
     // helper functions
@@ -232,6 +232,7 @@
         this.width = shape.path.width
         this.height = shape.path.height
         this.instructions = shape.path.instructions
+        this.enc = shape.encoded
 
         const polygon = shape.path.instructions
           .filter((ins) => ins.method === 'moveTo' || ins.method === 'lineTo')
@@ -330,6 +331,7 @@
       y: 0,
     }
     let dragging_piece = null
+    let loading_state = false
 
     const updateScale = () => {
       mouse_pos.x *= scale
@@ -345,12 +347,14 @@
     const updateBoardWidth = () => {
       board_rect.width = Number.parseInt(BoardWidth.value)
       updateScale()
+      saveState()
       dirty = true
     }
 
     const updateBoardHeight = () => {
       board_rect.height = Number.parseInt(BoardHeight.value)
       updateScale()
+      saveState()
       dirty = true
     }
 
@@ -364,12 +368,52 @@
         [...Array(Number.parseInt(LFlippedPieces.value))].map(() => new Piece(SHAPES.LF)),
         [...Array(Number.parseInt(SFlippedPieces.value))].map(() => new Piece(SHAPES.SF)),
       )
+      saveState()
       dirty = true
     }
 
-    updateBoardWidth()
-    updateBoardHeight()
-    updatePieces()
+    const loadState = () => {
+      loading_state = true
+      let state
+      if (state = window.location.hash.match(/^#w(\d+)h(\d+)p([tilosLS]+)$/)) {
+        BoardWidth.value = state[1]
+        BoardHeight.value = state[2]
+
+        const encodedToShape = Object.fromEntries(Object.values(SHAPES).map((s) => [s.encoded, s.sym]))
+        const shapeToInput = Object.fromEntries(Object.values(SHAPES).map((s) =>
+          [s.sym, document.getElementById(`${s.encoded}_pieces`)]
+        ))
+
+        const piece_codes = state[3]
+        const piece_counts = Object.fromEntries(Object.values(Shape).map((k) => [k, 0]))
+        for (let i = 0; i < piece_codes.length; i += 1) {
+          const c = piece_codes.charAt(i)
+          piece_counts[encodedToShape[c]] += 1
+        }
+
+        for (const k of Reflect.ownKeys(piece_counts)) {
+          shapeToInput[k].value = piece_counts[k].toString()
+        }
+
+        updateBoardWidth()
+        updateBoardHeight()
+        updatePieces()
+      }
+      loading_state = false
+    }
+
+    const saveState = () => {
+      if (!loading_state) {
+        window.location.hash = `w${board_rect.width}h${board_rect.height}p${pieces.map((piece) => piece.enc).join('')}`
+      }
+    }
+
+    if (!loadState()) {
+      updateBoardWidth()
+      updateBoardHeight()
+      updatePieces()
+      saveState()
+    }
 
     // drawing
     const drawPath = (path) => {
@@ -443,6 +487,7 @@
     }
 
     // handlers
+    window.onhashchange = loadState
     Scale.onchange = updateScale
     BoardWidth.onchange = updateBoardWidth
     BoardHeight.onchange = updateBoardHeight
@@ -451,8 +496,8 @@
     LPieces.onchange = updatePieces
     OPieces.onchange = updatePieces
     SPieces.onchange = updatePieces
-    LPiecesFlipped.onchange = updatePieces
-    SPiecesFlipped.onchange = updatePieces
+    LFlippedPieces.onchange = updatePieces
+    SFlippedPieces.onchange = updatePieces
 
     Canvas.onmousemove = (e) => {
       const rect = Canvas.getBoundingClientRect()
