@@ -189,39 +189,29 @@
       }
     }
 
-    // consts
-    const SHAPE_T = parseSvgLikePath('m 0 0 h 3 v 1 h -1 v 1 h -1 v -1 h -1 z')
-    const SHAPE_I = parseSvgLikePath('m 0 0 h 4 v 1 h -4 z')
-    const SHAPE_L = parseSvgLikePath('m 0 0 h 3 v 1 h -2 v 1 h -1 z')
-    const SHAPE_O = parseSvgLikePath('m 0 0 h 2 v 2 h -2 z')
-    const SHAPE_S = parseSvgLikePath('m 0 0 h 2 v 1 h 1 v 1 h -2 v -1 h -1 z')
+    const defineShapeEntry = ([key, encoded, color, path]) => [key, {
+      sym: Symbol(key),
+      encoded,
+      color,
+      path: parseSvgLikePath(path)
+    }]
 
-    const SHAPE_L_FLIPPED = parseSvgLikePath('m 0 0 h 1 v 1 h 2 v 1 h -3 z')
-    const SHAPE_S_FLIPPED = parseSvgLikePath('m 0 1 h 1 v -1 h 2 v 1 h -1 v 1 h -2 z')
+    // consts
+    const SHAPES = Object.freeze(Object.fromEntries([
+      ['T', 't', '#D32F2F', 'm 0 0 h 3 v 1 h -1 v 1 h -1 v -1 h -1 z'],
+      ['I', 'i', '#BA68C8', 'm 0 0 h 4 v 1 h -4 z'],
+      ['L', 'l', '#7986CB', 'm 0 0 h 3 v 1 h -2 v 1 h -1 z'],
+      ['O', 'o', '#4DD0E1', 'm 0 0 h 2 v 2 h -2 z'],
+      ['S', 's', '#AED581', 'm 0 0 h 2 v 1 h 1 v 1 h -2 v -1 h -1 z'],
+      ['LF', 'L', '#FFD54F', 'm 0 0 h 1 v 1 h 2 v 1 h -3 z'],
+      ['SF', 'S', '#FF8A65', 'm 0 1 h 1 v -1 h 2 v 1 h -1 v 1 h -2 z'],
+    ].map(defineShapeEntry)))
 
     const RENDER_PADDING = 1
     const MAX_SHAPE_SIZE = 4
 
     // types
-    const Shape = Object.freeze({
-      T: Symbol('T'),
-      I: Symbol('I'),
-      L: Symbol('L'),
-      O: Symbol('O'),
-      S: Symbol('S'),
-      LF: Symbol('LF'),
-      SF: Symbol('SF'),
-    })
-
-    const Color = Object.freeze({
-      [Shape.T]: '#D32F2F',
-      [Shape.I]: '#BA68C8',
-      [Shape.L]: '#7986CB',
-      [Shape.O]: '#4DD0E1',
-      [Shape.S]: '#AED581',
-      [Shape.LF]: '#FFD54F',
-      [Shape.SF]: '#FF8A65',
-    })
+    const Shape = Object.freeze(Object.fromEntries(Object.entries(SHAPES).map(([k, s]) => [k, s.sym])))
 
     const Location = Object.freeze({
       BOARD: Symbol('BOARD'),
@@ -230,20 +220,20 @@
     })
 
     const Piece = class {
-      constructor(shape, shapePath) {
-        this.shape = shape
-        this.shape_idx = Object.values(Shape).findIndex((s) => s === shape)
+      constructor(shape) {
+        this.shape = shape.sym
+        this.shape_idx = Object.values(SHAPES).findIndex((s) => s.sym === shape.sym)
         this.x = 0
         this.y = 0
         this.rot = 0
-        this.color = Color[shape]
+        this.color = shape.color
         this.highlight = false
         this.location = Location.HOLDER
-        this.width = shapePath.width
-        this.height = shapePath.height
-        this.instructions = shapePath.instructions
+        this.width = shape.path.width
+        this.height = shape.path.height
+        this.instructions = shape.path.instructions
 
-        const polygon = shapePath.instructions
+        const polygon = shape.path.instructions
           .filter((ins) => ins.method === 'moveTo' || ins.method === 'lineTo')
           .map((ins) => ({
             x: ins.args[0],
@@ -366,13 +356,13 @@
 
     const updatePieces = () => {
       pieces = [].concat(
-        [...Array(Number.parseInt(TPieces.value))].map(() => new Piece(Shape.T, SHAPE_T)),
-        [...Array(Number.parseInt(IPieces.value))].map(() => new Piece(Shape.I, SHAPE_I)),
-        [...Array(Number.parseInt(LPieces.value))].map(() => new Piece(Shape.L, SHAPE_L)),
-        [...Array(Number.parseInt(OPieces.value))].map(() => new Piece(Shape.O, SHAPE_O)),
-        [...Array(Number.parseInt(SPieces.value))].map(() => new Piece(Shape.S, SHAPE_S)),
-        [...Array(Number.parseInt(LPiecesFlipped.value))].map(() => new Piece(Shape.LF, SHAPE_L_FLIPPED)),
-        [...Array(Number.parseInt(SPiecesFlipped.value))].map(() => new Piece(Shape.SF, SHAPE_S_FLIPPED)),
+        [...Array(Number.parseInt(TPieces.value))].map(() => new Piece(SHAPES.T)),
+        [...Array(Number.parseInt(IPieces.value))].map(() => new Piece(SHAPES.I)),
+        [...Array(Number.parseInt(LPieces.value))].map(() => new Piece(SHAPES.L)),
+        [...Array(Number.parseInt(OPieces.value))].map(() => new Piece(SHAPES.O)),
+        [...Array(Number.parseInt(SPieces.value))].map(() => new Piece(SHAPES.S)),
+        [...Array(Number.parseInt(LFlippedPieces.value))].map(() => new Piece(SHAPES.LF)),
+        [...Array(Number.parseInt(SFlippedPieces.value))].map(() => new Piece(SHAPES.SF)),
       )
       dirty = true
     }
