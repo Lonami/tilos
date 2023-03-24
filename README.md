@@ -26,6 +26,10 @@ it can solve the following puzzle just fine:
 
 but even after porting the python to rust, it's too slow to solve any proper puzzle. i have some ideas to improve it though.
 
+## how can i try it?
+
+there's an `.html` page inside the `www/` directory. you can download that and open it in your web-browser of choice. by default you'll find the puzzle i was stuck on, and you can try to solve it by hand, or create your own puzzle configurations.
+
 ## history
 
 i finally got to play "the talos principle", which i bought many years back. i do eventually give up on some of the puzzles when my brain can't think. but so far, the little tetris-like puzzle were not posing a challenge. until one did. and here we are!

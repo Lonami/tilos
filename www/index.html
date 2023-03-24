@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>tilos puzzle solver</title>
+  <style>
+    div {
+      padding: 1em;
+    }
+
+    canvas {
+      border: 1px solid #000;
+    }
+
+    .rows {
+      display: flex;
+      flex-direction: row;
+    }
+
+    input[type=number] {
+      width: 4em;
+    }
+
+  </style>
+</head>
+
+<body class="rows">
+  <div>
+    <h1>tilos</h1>
+    <h2>settings</h2>
+    <h3>rendering</h3>
+    <label for="autorefresh">autorefresh page</label>
+    <input id="autorefresh" type="checkbox">
+
+    <label for="scale">board scale</label>
+    <input id="scale" type="number" value="24" step="2" min="4">
+
+    <h3>puzzle</h3>
+    <div>
+      <label for="board_width">board width</label>
+      <input id="board_width" type="number" value="8" min="0">
+
+      <label for="board_height">board height</label>
+      <input id="board_height" type="number" value="6" min="0">
+    </div>
+
+    <div>
+      <label for="t_pieces">number of t-pieces</label>
+      <input id="t_pieces" type="number" value="2" min="0">
+    </div>
+
+    <div>
+      <label for="i_pieces">number of i-pieces</label>
+      <input id="i_pieces" type="number" value="1" min="0">
+    </div>
+
+    <div>
+      <label for="l_pieces">number of l-pieces</label>
+      <input id="l_pieces" type="number" value="2" min="0">
+    </div>
+
+    <div>
+      <label for="o_pieces">number of o-pieces</label>
+      <input id="o_pieces" type="number" value="2" min="0">
+    </div>
+
+    <div>
+      <label for="s_pieces">number of s-pieces</label>
+      <input id="s_pieces" type="number" value="2" min="0">
+    </div>
+
+    <div>
+      <label for="l_pieces_flipped">number of mirrored l-pieces</label>
+      <input id="l_pieces_flipped" type="number" value="3" min="0">
+    </div>
+
+    <div>
+      <label for="s_pieces_flipped">number of mirrored s-pieces</label>
+      <input id="s_pieces_flipped" type="number" value="0" min="0">
+    </div>
+  </div>
+  <div>
+    <h2>puzzle board</h2>
+    <!-- tabindex needed to have focus and be able to process keyboard events -->
+    <canvas tabindex="0" id="canvas">
+      sorry, this page needs canvas support to work properly
+    </canvas>
+  </div>
+  <script>
+    // autorefresh (as its own script so it can still work even if the rest fails)
+    const AutoRefresh = document.getElementById('autorefresh')
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    (async () => {
+      let initial = null
+      while (true) {
+        if (AutoRefresh.checked) {
+          const resp = await fetch(window.location.href)
+          const body = await resp.text()
+          if (initial === null) {
+            initial = body
+          } else if (body !== initial) {
+            window.location.reload()
+            break
+          }
+        }
+        await sleep(2000)
+      }
+    })()
+
+  </script>
+  <script>
+    // html elements
+    const Scale = document.getElementById('scale')
+    const BoardWidth = document.getElementById('board_width')
+    const BoardHeight = document.getElementById('board_height')
+    const TPieces = document.getElementById('t_pieces')
+    const IPieces = document.getElementById('i_pieces')
+    const LPieces = document.getElementById('l_pieces')
+    const OPieces = document.getElementById('o_pieces')
+    const SPieces = document.getElementById('s_pieces')
+    const LPiecesFlipped = document.getElementById('l_pieces_flipped')
+    const SPiecesFlipped = document.getElementById('s_pieces_flipped')
+    const Canvas = document.getElementById('canvas')
+
+    // helper functions
+    const parseSvgLikePath = (path) => {
+      let width = 0
+      let height = 0
+      let instructions = []
+
+      const tokens = path.split(/\s+/)
+      let curx = 0
+      let cury = 0
+      let mode = null
+      let args = []
+      let closed = true
+
+      const requireArgs = (cb) => {
+        if (args.length === cb.length) {
+          cb(...args)
+          args.length = 0
+        }
+      }
+
+      const pushDelta = (x, y, method) => pushAbs(curx + x, cury + y, method)
+      const pushAbs = (x, y, method) => {
+        curx = x
+        cury = y
+        if (closed) {
+          instructions.push({ method: 'beginPath', args: [] })
+          closed = false
+        }
+        width = Math.max(width, x)
+        height = Math.max(height, y)
+        instructions.push({ method, args: [x, y] })
+      }
+
+      tokens.forEach((token) => {
+        if (/[a-zA-Z]/.test(token)) {
+          mode = token
+        } else {
+          args.push(Number.parseFloat(token))
+        }
+        switch (mode) {
+          case 'm': requireArgs((dx, dy) => pushDelta(dx, dy, 'moveTo')); break
+          case 'l': requireArgs((dx, dy) => pushDelta(dx, dy, 'lineTo')); break
+          case 'h': requireArgs((dx) => pushDelta(dx, 0, 'lineTo')); break
+          case 'v': requireArgs((dy) => pushDelta(0, dy, 'lineTo')); break
+
+          case 'M': requireArgs((x, y) => pushAbs(x, y, 'moveTo')); break
+          case 'L': requireArgs((x, y) => pushAbs(x, y, 'lineTo')); break
+          case 'H': requireArgs((x) => pushAbs(x, cury, 'lineTo')); break
+          case 'V': requireArgs((y) => pushAbs(curx, y, 'lineTo')); break
+
+          case 'z':
+          case 'Z':
+            instructions.push({ method: 'closePath', args: [] })
+            closed = true
+            break;
+        }
+      })
+
+      return {
+        width,
+        height,
+        instructions,
+      }
+    }
+
+    // consts
+    const SHAPE_T = parseSvgLikePath('m 0 0 h 3 v 1 h -1 v 1 h -1 v -1 h -1 z')
+    const SHAPE_I = parseSvgLikePath('m 0 0 h 4 v 1 h -4 z')
+    const SHAPE_L = parseSvgLikePath('m 0 0 h 3 v 1 h -2 v 1 h -1 z')
+    const SHAPE_O = parseSvgLikePath('m 0 0 h 2 v 2 h -2 z')
+    const SHAPE_S = parseSvgLikePath('m 0 0 h 2 v 1 h 1 v 1 h -2 v -1 h -1 z')
+
+    const SHAPE_L_FLIPPED = parseSvgLikePath('m 0 0 h 1 v 1 h 2 v 1 h -3 z')
+    const SHAPE_S_FLIPPED = parseSvgLikePath('m 0 1 h 1 v -1 h 2 v 1 h -1 v 1 h -2 z')
+
+    const RENDER_PADDING = 1
+    const MAX_SHAPE_SIZE = 4
+
+    // types
+    const Shape = Object.freeze({
+      T: Symbol('T'),
+      I: Symbol('I'),
+      L: Symbol('L'),
+      O: Symbol('O'),
+      S: Symbol('S'),
+      LF: Symbol('LF'),
+      SF: Symbol('SF'),
+    })
+
+    const Color = Object.freeze({
+      [Shape.T]: '#D32F2F',
+      [Shape.I]: '#BA68C8',
+      [Shape.L]: '#7986CB',
+      [Shape.O]: '#4DD0E1',
+      [Shape.S]: '#AED581',
+      [Shape.LF]: '#FFD54F',
+      [Shape.SF]: '#FF8A65',
+    })
+
+    const Location = Object.freeze({
+      BOARD: Symbol('BOARD'),
+      HOLDER: Symbol('HOLDER'),
+      FREE: Symbol('FREE'),
+    })
+
+    const Piece = class {
+      constructor(shape, shapePath) {
+        this.shape = shape
+        this.shape_idx = Object.values(Shape).findIndex((s) => s === shape)
+        this.x = 0
+        this.y = 0
+        this.rot = 0
+        this.color = Color[shape]
+        this.highlight = false
+        this.location = Location.HOLDER
+        this.width = shapePath.width
+        this.height = shapePath.height
+        this.instructions = shapePath.instructions
+
+        const polygon = shapePath.instructions
+          .filter((ins) => ins.method === 'moveTo' || ins.method === 'lineTo')
+          .map((ins) => ({
+            x: ins.args[0],
+            y: ins.args[1],
+          }))
+        polygon.push(polygon[0]) // close the polygon
+
+        // precomputed lines with y-displacement
+        this.vertical_lines = []
+        for (let i = 1; i < polygon.length; i += 1) {
+          let p0 = polygon[i - 1]
+          let p1 = polygon[i]
+          if (p0.y !== p1.y) {
+            const vl = {
+              x0: Math.min(p0.x, p1.x),
+              x1: Math.max(p0.x, p1.x),
+              y0: Math.min(p0.y, p1.y),
+              y1: Math.max(p0.y, p1.y),
+            }
+            vl.dx = vl.x1 - vl.x0
+            vl.inv_dy = 1 / (vl.y1 - vl.y0)
+            this.vertical_lines.push(vl)
+          }
+        }
+      }
+
+      setPos(cx, cy) {
+        this.location = Location.FREE
+        if (this.rot === 90 || this.rot === 270) {
+          this.x = cx - this.height * 0.5
+          this.y = cy - this.width * 0.5
+        } else {
+          this.x = cx - this.width * 0.5
+          this.y = cy - this.height * 0.5
+        }
+      }
+
+      pos() {
+        switch (this.location) {
+          case Location.BOARD:
+            return [
+              this.x + board_rect.x,
+              this.y + board_rect.y,
+            ]
+          case Location.HOLDER:
+            return [
+              board_rect.x + board_rect.width + RENDER_PADDING + (this.shape_idx % 2) * (MAX_SHAPE_SIZE + 1),
+              RENDER_PADDING + (Math.floor(this.shape_idx / 2)) * (MAX_SHAPE_SIZE + 1),
+            ]
+          case Location.FREE:
+            return [this.x, this.y]
+        }
+      }
+
+      contains(x, y) {
+        // point-in-polygon, using ray casting, following the even-odd rule.
+        // casting an horizontal ray, check how many intersections on vertical lines
+        // that pass through the input y position happen after the x position.
+        // the point is inside if there were an odd number of intersections.
+
+        // vertical lines were pre-calculated at origin. offset input position to match.
+        const [dx, dy] = this.pos()
+        x -= dx
+        y -= dy
+
+        // in practice there is no need to interpolate the x position because all
+        // our lines are either horizontal or vertical, but it's nice to get it right.
+        return this.vertical_lines.filter((vl) => {
+          const yp = (y - vl.y0) * vl.inv_dy
+          return 0 < yp && yp < 1 && x < vl.x0 + (vl.dx * yp)
+        }).length % 2 === 1
+      }
+
+      render() {
+        const [x, y] = this.pos()
+        drawTransformedPath(x, y, this.rot, this.color, this, this.highlight ? 4 : 1)
+      }
+    }
+
+    // globals
+    const ctx = Canvas.getContext("2d")
+    let dirty = true
+    let lastFrame = 0
+    let scale = 0
+    const board_rect = {
+      x: RENDER_PADDING,
+      y: RENDER_PADDING,
+      width: 0,
+      height: 0,
+    }
+    let pieces = []
+    const mouse_pos = {
+      x: 0,
+      y: 0,
+    }
+    let dragging_piece = null
+
+    const updateScale = () => {
+      mouse_pos.x *= scale
+      mouse_pos.y *= scale
+      scale = Number.parseFloat(Scale.value)
+      mouse_pos.x /= scale
+      mouse_pos.y /= scale
+      Canvas.width = scale * (board_rect.x + board_rect.width + 2 * RENDER_PADDING + 2 * (RENDER_PADDING + MAX_SHAPE_SIZE))
+      Canvas.height = scale * (board_rect.y + board_rect.height + RENDER_PADDING + Math.floor(Object.keys(Shape).length / 2) * (RENDER_PADDING + MAX_SHAPE_SIZE))
+      dirty = true
+    }
+
+    const updateBoardWidth = () => {
+      board_rect.width = Number.parseInt(BoardWidth.value)
+      updateScale()
+      dirty = true
+    }
+
+    const updateBoardHeight = () => {
+      board_rect.height = Number.parseInt(BoardHeight.value)
+      updateScale()
+      dirty = true
+    }
+
+    const updatePieces = () => {
+      pieces = [].concat(
+        [...Array(Number.parseInt(TPieces.value))].map(() => new Piece(Shape.T, SHAPE_T)),
+        [...Array(Number.parseInt(IPieces.value))].map(() => new Piece(Shape.I, SHAPE_I)),
+        [...Array(Number.parseInt(LPieces.value))].map(() => new Piece(Shape.L, SHAPE_L)),
+        [...Array(Number.parseInt(OPieces.value))].map(() => new Piece(Shape.O, SHAPE_O)),
+        [...Array(Number.parseInt(SPieces.value))].map(() => new Piece(Shape.S, SHAPE_S)),
+        [...Array(Number.parseInt(LPiecesFlipped.value))].map(() => new Piece(Shape.LF, SHAPE_L_FLIPPED)),
+        [...Array(Number.parseInt(SPiecesFlipped.value))].map(() => new Piece(Shape.SF, SHAPE_S_FLIPPED)),
+      )
+      dirty = true
+    }
+
+    updateBoardWidth()
+    updateBoardHeight()
+    updatePieces()
+
+    // drawing
+    const drawPath = (path) => {
+      path.instructions.forEach((instr) => {
+        ctx[instr.method](...instr.args)
+      })
+    }
+
+    const drawTransformedPath = (x, y, rot, color, path, thickness) => {
+      ctx.save()
+
+      // align top left
+      let dx, dy
+      switch (rot) {
+        case 0: [dx, dy] = [0, 0]; break
+        case 90: [dx, dy] = [path.height, 0]; break
+        case 180: [dx, dy] = [path.width, path.height]; break
+        case 270: [dx, dy] = [0, path.width]; break
+      }
+
+      ctx.translate(x + dx, y + dy)
+      ctx.rotate(rot * Math.PI / 180)
+      drawPath(path)
+
+      ctx.fillStyle = color
+      ctx.lineWidth = (thickness ?? 1) / scale
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.restore()
+    }
+
+    const redraw = (dt) => {
+      if (!dirty) {
+        return
+      }
+
+      ctx.clearRect(0, 0, Canvas.width, Canvas.height)
+
+      ctx.setTransform(scale, 0, 0, scale, 0, 0)
+      ctx.lineWidth = 1 / scale
+
+      // render in reverse (mouseover checks going forward)
+      for (let i = pieces.length; i--;) {
+        if (i !== dragging_piece) {
+          pieces[i].render()
+        }
+      }
+
+      for (let i = 0; i <= board_rect.height; i += 1) {
+        ctx.beginPath()
+        ctx.moveTo(board_rect.x, board_rect.y + i)
+        ctx.lineTo(board_rect.x + board_rect.width, board_rect.y + i)
+        ctx.closePath()
+        ctx.stroke()
+      }
+
+      for (let j = 0; j <= board_rect.width; j += 1) {
+        ctx.beginPath()
+        ctx.moveTo(board_rect.x + j, board_rect.y)
+        ctx.lineTo(board_rect.x + j, board_rect.y + board_rect.height)
+        ctx.closePath()
+        ctx.stroke()
+      }
+
+      if (dragging_piece !== null) {
+        pieces[dragging_piece].render()
+      }
+
+      dirty = false
+    }
+
+    // handlers
+    Scale.onchange = updateScale
+    BoardWidth.onchange = updateBoardWidth
+    BoardHeight.onchange = updateBoardHeight
+    TPieces.onchange = updatePieces
+    IPieces.onchange = updatePieces
+    LPieces.onchange = updatePieces
+    OPieces.onchange = updatePieces
+    SPieces.onchange = updatePieces
+    LPiecesFlipped.onchange = updatePieces
+    SPiecesFlipped.onchange = updatePieces
+
+    Canvas.onmousemove = (e) => {
+      const rect = Canvas.getBoundingClientRect()
+      mouse_pos.x = (e.clientX - rect.left) / scale
+      mouse_pos.y = (e.clientY - rect.top) / scale
+
+      if (dragging_piece !== null) {
+        const piece = pieces[dragging_piece]
+        piece.setPos(mouse_pos.x, mouse_pos.y)
+      } else {
+        pieces.forEach((piece) => piece.highlight = false)
+        const hovering_piece = pieces.findIndex((piece) => piece.contains(mouse_pos.x, mouse_pos.y))
+        if (hovering_piece !== -1) {
+          Canvas.style.cursor = 'grab'
+          pieces[hovering_piece].highlight = true
+        } else {
+          Canvas.style.cursor = 'default'
+        }
+      }
+
+      dirty = true
+    }
+
+    Canvas.onclick = (e) => {
+      if (dragging_piece !== null) {
+        dragging_piece = null
+        dirty = true
+      } else {
+        let found = pieces.findIndex((piece) => piece.contains(mouse_pos.x, mouse_pos.y))
+        if (found !== -1) {
+          Canvas.style.cursor = 'grabbing'
+          dragging_piece = found
+          const piece = pieces[dragging_piece]
+          piece.setPos(mouse_pos.x, mouse_pos.y)
+          dirty = true
+        }
+      }
+    }
+
+    Canvas.onkeypress = (e) => {
+      if (e.key === 'r') {
+        if (dragging_piece !== null) {
+          const piece = pieces[dragging_piece]
+          piece.rot = (piece.rot + 90) % 360
+          piece.setPos(mouse_pos.x, mouse_pos.y)
+          dirty = true
+        }
+      }
+    }
+
+    // entry point
+    const mainLoop = () => {
+      redraw((performance.now() - lastFrame) * 0.001)
+      lastFrame = performance.now()
+      requestAnimationFrame(mainLoop)
+    }
+    mainLoop()
+  </script>
+</body>
+
+</html>
