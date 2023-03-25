@@ -237,8 +237,8 @@ fn parse_args() -> Option<Settings> {
     );
     let shape_s = Shape::from_str(
         "
-        _ # #
         # # _
+        _ # #
         ",
     );
 

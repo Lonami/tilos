@@ -74,8 +74,8 @@ shapes = {k: Shape.from_str(v) for k, v in {
          # #
          ''',
     's': '''
-         _ # #
          # # _
+         _ # #
          ''',
 }.items()}
 
