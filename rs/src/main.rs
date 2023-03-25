@@ -173,7 +173,7 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
                     }
                     tried_pieces.push(piece.clone());
                     if let Some(new) = board.put(x, y, &piece) {
-                        if !board.has_dead_zones() {
+                        if !new.has_dead_zones() {
                             let mut remaining = pieces.clone();
                             remaining.swap_remove(i);
 
