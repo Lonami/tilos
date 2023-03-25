@@ -1,5 +1,6 @@
+use owo_colors::OwoColorize as _;
 use std::env;
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::process;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -289,6 +290,88 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Option<Settings> {
     })
 }
 
+fn render_step(board: &Shape, step: &Step) -> String {
+    let mut result = String::new();
+
+    result.push_str("╲x│");
+    for j in 0..board.width() {
+        if j % 2 == 1 {
+            if j == step.x {
+                write!(result, "{:>2}", j.green()).unwrap();
+            } else {
+                write!(result, "{:>2}", j).unwrap();
+            }
+        } else {
+            result.push_str("  ");
+        }
+    }
+    write!(result, "│ place at x={}, y={}\n", step.x, step.y).unwrap();
+
+    result.push_str("y╲│");
+    for j in 0..board.width() {
+        if j % 2 == 0 {
+            if j == step.x {
+                write!(result, "{:>2}", j.green()).unwrap();
+            } else {
+                write!(result, "{:>2}", j).unwrap();
+            }
+        } else {
+            result.push_str("  ");
+        }
+    }
+    write!(
+        result,
+        "│ rotate {} time{}\n",
+        step.r,
+        if step.r == 1 { "" } else { "s" }
+    )
+    .unwrap();
+
+    write!(result, "──┼{:─>w$}┤\n", "", w = board.width() * 2).unwrap();
+
+    let orig_piece = {
+        let mut piece = step.piece.clone();
+        for _ in 0..(4 - step.r) {
+            piece = piece.rot();
+        }
+        piece
+    };
+
+    let board_after = board.put(step.x, step.y, &step.piece);
+
+    for i in 0..board.height() {
+        if i == step.y {
+            write!(result, "{:>2}│", i.green()).unwrap();
+        } else {
+            write!(result, "{:>2}│", i).unwrap();
+        }
+
+        for j in 0..board.width() {
+            if board.rows[i][j] {
+                result.push_str("██");
+            } else if board_after.rows[i][j] {
+                write!(result, "{}", "██".green()).unwrap();
+            } else {
+                result.push_str("  ");
+            }
+        }
+
+        result.push_str("│");
+
+        if i < orig_piece.height() {
+            result.push_str(" ");
+            orig_piece.rows[i]
+                .iter()
+                .for_each(|c| result.push_str(if *c { "██" } else { "  " }));
+        }
+
+        result.push_str("\n");
+    }
+    write!(result, "  └{:─>w$}┘\n", "", w = board.width() * 2).unwrap();
+
+    result
+}
+
 fn main() {
     let settings = match parse_args(env::args()) {
         Some(s) => s,
@@ -314,12 +397,10 @@ fn main() {
         Shape::with_size(settings.width, settings.height),
         settings.pieces,
     ) {
+        let mut board = Shape::with_size(settings.width, settings.height);
         for step in solution {
-            println!(
-                "rotate {} times, then place at ({}, {}):",
-                step.r, step.x, step.y
-            );
-            println!("{}", step.piece);
+            println!("{}", render_step(&board, &step));
+            board = board.put(step.x, step.y, &step.piece);
         }
     } else {
         println!("no solution found!");
