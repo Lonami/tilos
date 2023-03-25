@@ -53,10 +53,6 @@ impl Shape {
         self.rows.len()
     }
 
-    fn full(&self) -> bool {
-        self.rows.iter().all(|row| row.iter().all(|c| *c))
-    }
-
     fn rot(&self) -> Self {
         let mut new_rows = vec![vec![false; self.height()]; self.width()];
         for i in 0..self.height() {
@@ -153,7 +149,7 @@ impl Shape {
 }
 
 fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
-    if board.full() {
+    if pieces.is_empty() {
         for step in used {
             println!(
                 "rotate {} times, then place at ({}, {}):",
