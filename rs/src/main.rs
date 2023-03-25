@@ -72,24 +72,31 @@ impl Shape {
         )
     }
 
-    fn put(&self, x: usize, y: usize, other: &Self) -> Option<Self> {
+    fn can_put(&self, x: usize, y: usize, other: &Self) -> bool {
         if x + other.width() > self.width() || y + other.height() > self.height() {
-            return None;
+            return false;
         }
 
-        let mut new = self.rows.clone();
         for i in 0..other.height() {
             for j in 0..other.width() {
-                if other.rows[i][j] {
-                    if new[y + i][x + j] {
-                        return None;
-                    }
-                    new[y + i][x + j] = true
+                if other.rows[i][j] && self.rows[y + i][x + j] {
+                    return false;
                 }
             }
         }
 
-        Some(Shape::new(new))
+        true
+    }
+
+    fn put(&self, x: usize, y: usize, other: &Self) -> Self {
+        let mut new = self.rows.clone();
+        for i in 0..other.height() {
+            for j in 0..other.width() {
+                new[y + i][x + j] |= other.rows[i][j]
+            }
+        }
+
+        Shape::new(new)
     }
 
     fn len(&self) -> usize {
@@ -172,7 +179,8 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
                         continue;
                     }
                     tried_pieces.push(piece.clone());
-                    if let Some(new) = board.put(x, y, &piece) {
+                    if board.can_put(x, y, &piece) {
+                        let new = board.put(x, y, &piece);
                         if !new.has_dead_zones() {
                             let mut remaining = pieces.clone();
                             remaining.swap_remove(i);
