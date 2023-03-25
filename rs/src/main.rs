@@ -306,6 +306,7 @@ fn main() {
         != settings.width * settings.height
     {
         eprintln!("available pieces (given pieces are not enough or are too much)");
+        process::exit(5);
     }
 
     solve(
