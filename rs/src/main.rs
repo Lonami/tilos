@@ -2,7 +2,7 @@ use std::env;
 use std::fmt;
 use std::process;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct Shape {
     rows: Vec<Vec<bool>>,
 }
@@ -102,6 +102,54 @@ impl Shape {
             .map(|row| row.iter().map(|c| *c as usize).sum::<usize>())
             .sum()
     }
+
+    fn is_open(&self, x: isize, y: isize) -> bool {
+        0 <= x
+            && (x as usize) < self.width()
+            && 0 <= y
+            && (y as usize) < self.height()
+            && !self.rows[y as usize][x as usize]
+    }
+
+    fn is_dead(&self, x: usize, y: usize) -> bool {
+        let mut explored = [Some((x as isize, y as isize)), None, None];
+
+        for _ in 0..4 {
+            for ei in 0..explored.len() {
+                if let Some((x, y)) = explored[ei] {
+                    for (dx, dy) in [(0, 1), (1, 0), (0, -1), (-1, 0)] {
+                        if self.is_open(x + dx, y + dy)
+                            && !explored.contains(&Some((x + dx, y + dy)))
+                        {
+                            let mut stored = false;
+                            for iei in 0..explored.len() {
+                                if explored[iei].is_none() {
+                                    explored[iei] = Some((x + dx, y + dy));
+                                    stored = true;
+                                    break;
+                                }
+                            }
+                            if !stored {
+                                // explore list full, means there may be space for a shape
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // could not fill list, probably dead
+        true
+    }
+
+    fn has_dead_zones(&self) -> bool {
+        self.rows.iter().enumerate().any(|(i, row)| {
+            row.iter()
+                .enumerate()
+                .any(|(j, c)| !*c && self.is_dead(j, i))
+        })
+    }
 }
 
 fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
@@ -129,19 +177,21 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
                     }
                     tried_pieces.push(piece.clone());
                     if let Some(new) = board.put(x, y, &piece) {
-                        let mut remaining = pieces.clone();
-                        remaining.swap_remove(i);
+                        if !board.has_dead_zones() {
+                            let mut remaining = pieces.clone();
+                            remaining.swap_remove(i);
 
-                        let mut used_now = used.clone();
-                        used_now.push(Step {
-                            x,
-                            y,
-                            piece: piece.clone(),
-                            r,
-                        });
+                            let mut used_now = used.clone();
+                            used_now.push(Step {
+                                x,
+                                y,
+                                piece: piece.clone(),
+                                r,
+                            });
 
-                        if solve(new, remaining, used_now) {
-                            return true;
+                            if solve(new, remaining, used_now) {
+                                return true;
+                            }
                         }
                     }
                     piece = piece.rot();
@@ -267,4 +317,57 @@ fn main() {
         settings.pieces,
         vec![],
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_deadzones() {
+        assert!(Shape::from_str(
+            "
+            # # # _ _ _ _ _
+            _ # _ _ _ _ _ _
+            # # # _ _ _ _ _
+            _ # _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            ",
+        )
+        .has_dead_zones());
+        assert!(Shape::from_str(
+            "
+            # # # _ _ _ _ _
+            _ _ # _ _ _ _ _
+            # # # _ _ _ _ _
+            _ # _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            ",
+        )
+        .has_dead_zones());
+        assert!(Shape::from_str(
+            "
+            # # # _ _ _ _ _
+            _ _ # _ _ _ _ _
+            # _ # # # _ _ _
+            # # # _ _ _ _ _
+            # _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            ",
+        )
+        .has_dead_zones());
+        assert!(!Shape::from_str(
+            "
+            # # # # # _ _ _
+            _ _ _ _ # _ _ _
+            # # # # # # _ _
+            _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _
+            ",
+        )
+        .has_dead_zones());
+    }
 }
