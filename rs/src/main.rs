@@ -155,16 +155,9 @@ impl Shape {
     }
 }
 
-fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
+fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
     if pieces.is_empty() {
-        for step in used {
-            println!(
-                "rotate {} times, then place at ({}, {}):",
-                step.r, step.x, step.y
-            );
-            println!("{}", step.piece);
-        }
-        return true;
+        return Some(Vec::new());
     }
 
     let mut tried_pieces = Vec::new();
@@ -185,16 +178,17 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
                             let mut remaining = pieces.clone();
                             remaining.swap_remove(i);
 
-                            let mut used_now = used.clone();
-                            used_now.push(Step {
-                                x,
-                                y,
-                                piece: piece.clone(),
-                                r,
-                            });
-
-                            if solve(new, remaining, used_now) {
-                                return true;
+                            if let Some(mut steps) = solve(new, remaining) {
+                                steps.insert(
+                                    0,
+                                    Step {
+                                        x,
+                                        y,
+                                        piece: piece.clone(),
+                                        r,
+                                    },
+                                );
+                                return Some(steps);
                             }
                         }
                     }
@@ -204,7 +198,7 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
         }
     }
 
-    false
+    None
 }
 
 impl fmt::Display for Shape {
@@ -316,11 +310,20 @@ fn main() {
         process::exit(5);
     }
 
-    solve(
+    if let Some(solution) = solve(
         Shape::with_size(settings.width, settings.height),
         settings.pieces,
-        vec![],
-    );
+    ) {
+        for step in solution {
+            println!(
+                "rotate {} times, then place at ({}, {}):",
+                step.r, step.x, step.y
+            );
+            println!("{}", step.piece);
+        }
+    } else {
+        println!("no solution found!");
+    }
 }
 
 #[cfg(test)]
@@ -381,7 +384,7 @@ mod tests {
         assert!(solve(
             Shape::with_size(settings.width, settings.height),
             settings.pieces,
-            vec![]
-        ))
+        )
+        .is_some());
     }
 }
