@@ -116,10 +116,18 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
         return true;
     }
 
+    let mut tried_pieces = Vec::new();
+
     for y in 0..board.height() {
         for x in 0..board.width() {
+            tried_pieces.clear();
             for (i, mut piece) in pieces.iter().cloned().enumerate() {
                 for r in 0..3 {
+                    if tried_pieces.contains(&piece) {
+                        piece = piece.rot();
+                        continue;
+                    }
+                    tried_pieces.push(piece.clone());
                     if let Some(new) = board.put(x, y, &piece) {
                         let mut remaining = pieces.clone();
                         remaining.swap_remove(i);
