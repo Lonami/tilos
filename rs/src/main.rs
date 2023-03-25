@@ -173,7 +173,7 @@ fn solve(board: Shape, pieces: Vec<Shape>, used: Vec<Step>) -> bool {
         for x in 0..board.width() {
             tried_pieces.clear();
             for (i, mut piece) in pieces.iter().cloned().enumerate() {
-                for r in 0..3 {
+                for r in 0..4 {
                     if tried_pieces.contains(&piece) {
                         piece = piece.rot();
                         continue;
@@ -219,7 +219,7 @@ impl fmt::Display for Shape {
     }
 }
 
-fn parse_args() -> Option<Settings> {
+fn parse_args(mut args: impl Iterator<Item = String>) -> Option<Settings> {
     let shape_t = Shape::from_str(
         "
         # # #
@@ -250,7 +250,6 @@ fn parse_args() -> Option<Settings> {
         ",
     );
 
-    let mut args = env::args();
     let _prog = args.next()?;
 
     let width = match args.next()?.parse() {
@@ -297,7 +296,7 @@ fn parse_args() -> Option<Settings> {
 }
 
 fn main() {
-    let settings = match parse_args() {
+    let settings = match parse_args(env::args()) {
         Some(s) => s,
         None => {
             eprintln!("usage: {} WIDTH HEIGHT PIECES", env::args().next().unwrap());
@@ -374,5 +373,15 @@ mod tests {
             ",
         )
         .has_dead_zones());
+    }
+
+    #[test]
+    fn check_all_rotations() {
+        let settings = parse_args(vec!["", "4", "3", "LLs"].into_iter().map(String::from)).unwrap();
+        assert!(solve(
+            Shape::with_size(settings.width, settings.height),
+            settings.pieces,
+            vec![]
+        ))
     }
 }
