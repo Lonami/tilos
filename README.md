@@ -4,7 +4,7 @@ my very own puzzle solver.
 
 ## what can it do?
 
-it can solve the following puzzle just fine:
+out of the 35 in-game puzzles, it can solve all of them in under 30 seconds except for 7 (most taking under a second), which is pretty neat. here's a visual example of what solving an extremely simple puzzle looks like:
 
 > board:
 >
@@ -24,7 +24,7 @@ it can solve the following puzzle just fine:
 > 🟥🟦🟦🟦\
 > 🟥🟥🟥🟦
 
-but even after porting the python to rust, it's too slow to solve any proper puzzle. i have some ideas to improve it though.
+however it's a shame that some puzzles are this slow to solve, so there's definitely room for improvement.
 
 ## how can i try it?
 
