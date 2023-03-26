@@ -7,6 +7,25 @@ use std::process;
 const ERR_NO_SOLUTION: i32 = 1;
 const ERR_BAD_ARGS: i32 = 2;
 
+#[cfg(not(feature = "owo-colors"))]
+mod owo_colors {
+    pub trait OwoColorize {
+        fn green(&self) -> String;
+    }
+
+    impl OwoColorize for usize {
+        fn green(&self) -> String {
+            format!("{}", self.clone())
+        }
+    }
+
+    impl OwoColorize for &str {
+        fn green(&self) -> String {
+            self.replace("█", "▒")
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct BitMatrix {
     matrix: u64,
