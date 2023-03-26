@@ -424,6 +424,7 @@ fn main() {
         }
     } else {
         println!("no solution found!");
+        process::exit(6);
     }
 }
 

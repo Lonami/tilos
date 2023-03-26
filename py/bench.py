@@ -43,7 +43,9 @@ for puzzle in puzzles:
     print('trying to solve...', ' :: '.join(puzzle['section']))
     start = time.time()
     try:
-        subprocess.run((str(executable), *puzzle['args']), timeout=BENCH_TIMEOUT, stdout=subprocess.DEVNULL)
-        print(f'success! took {time.time() - start:.3f}s')
+        subprocess.run((str(executable), *puzzle['args']), check=True, timeout=BENCH_TIMEOUT, stdout=subprocess.DEVNULL)
+        print(f'success! found solution in {time.time() - start:.3f}s')
+    except subprocess.CalledProcessError:
+        print(f'error! no solution in {time.time() - start:.3f}s')
     except subprocess.TimeoutExpired:
-        print(f'could not complete after {time.time() - start:.3f}s!')
+        print(f'error! could not complete in {time.time() - start:.3f}s')
