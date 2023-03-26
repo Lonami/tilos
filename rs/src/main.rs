@@ -3,6 +3,9 @@ use std::env;
 use std::fmt::{self, Write as _};
 use std::process;
 
+const ERR_NO_SOLUTION: i32 = 1;
+const ERR_BAD_ARGS: i32 = 2;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Shape {
     rows: Vec<Vec<bool>>,
@@ -215,7 +218,7 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
                     piece = piece.rot();
                 }
             }
-            break 'out
+            break 'out;
         }
     }
 
@@ -271,7 +274,7 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Option<Settings> {
         Ok(n) => n,
         Err(e) => {
             eprintln!("could not parse board width: {e}");
-            process::exit(1);
+            process::exit(ERR_BAD_ARGS);
         }
     };
 
@@ -279,7 +282,7 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Option<Settings> {
         Ok(n) => n,
         Err(e) => {
             eprintln!("could not parse board height: {e}");
-            process::exit(2);
+            process::exit(ERR_BAD_ARGS);
         }
     };
 
@@ -298,7 +301,7 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Option<Settings> {
             'S' => shape_s.flip(),
             _ => {
                 eprintln!("unknown shape: {c}");
-                process::exit(3);
+                process::exit(ERR_BAD_ARGS);
             }
         });
     }
@@ -398,7 +401,7 @@ fn main() {
         None => {
             eprintln!("usage: {} WIDTH HEIGHT PIECES", env::args().next().unwrap());
             eprintln!("available pieces (uppercase to flip it): tilos");
-            process::exit(4);
+            process::exit(ERR_BAD_ARGS);
         }
     };
 
@@ -410,7 +413,7 @@ fn main() {
         != settings.width * settings.height
     {
         eprintln!("available pieces (given pieces are not enough or are too much)");
-        process::exit(5);
+        process::exit(ERR_NO_SOLUTION);
     }
 
     if let Some(solution) = solve(
@@ -424,7 +427,7 @@ fn main() {
         }
     } else {
         println!("no solution found!");
-        process::exit(6);
+        process::exit(ERR_NO_SOLUTION);
     }
 }
 
