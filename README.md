@@ -4,7 +4,7 @@ my very own puzzle solver.
 
 ## what can it do?
 
-it can solve all 35 in-game puzzles extremely quickly (the slowest taking roughly 15ms), which is super cool. here's a visual example of what solving an extremely simple puzzle looks like:
+it can solve all 35 in-game puzzles extremely quickly (the slowest taking roughly 10ms, and i think half of that is spawning the process), which is super cool. here's a visual example of what solving an extremely simple puzzle looks like:
 
 > board:
 >

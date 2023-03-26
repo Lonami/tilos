@@ -2,6 +2,7 @@ import subprocess
 import os
 import re
 import time
+import statistics
 from pathlib import Path
 
 BENCH_TIMEOUT = 5
@@ -39,13 +40,26 @@ os.chdir(rs_dir)
 subprocess.run(('cargo', 'build', '--release'))
 
 # bench
+durations = []
 for puzzle in puzzles:
     print('trying to solve...', ' :: '.join(puzzle['section']))
     start = time.time()
     try:
         subprocess.run((str(executable), *puzzle['args']), check=True, timeout=BENCH_TIMEOUT, stdout=subprocess.DEVNULL)
-        print(f'success! found solution in {time.time() - start:.3f}s')
+        took = time.time() - start
+        print(f'success! found solution in {took:.3f}s')
     except subprocess.CalledProcessError:
-        print(f'error! no solution in {time.time() - start:.3f}s')
+        took = time.time() - start
+        print(f'error! no solution in {took:.3f}s')
     except subprocess.TimeoutExpired:
-        print(f'error! could not complete in {time.time() - start:.3f}s')
+        took = time.time() - start
+        print(f'error! could not complete in {took:.3f}s')
+    durations.append(took)
+
+print(
+    f'finished {len(puzzles)} puzzles in {sum(durations):.3f}s'
+    f' (mean={statistics.mean(durations):.3f}s,'
+    f' median={statistics.median(durations):.3f}s,'
+    f' max={max(durations):.3f}s,'
+    f' min={min(durations):.3f}s)'
+)
