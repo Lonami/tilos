@@ -174,10 +174,12 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
     }
 
     let mut tried_pieces = Vec::new();
-    let mut put_any = false;
 
     'out: for y in 0..board.height() {
         for x in 0..board.width() {
+            if board.rows[y][x] {
+                continue;
+            }
             tried_pieces.clear();
             for (i, mut piece) in pieces.iter().cloned().enumerate() {
                 for r in 0..4 {
@@ -190,7 +192,6 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
                     for (dx, dy) in piece.fit_cells_to_orig().into_iter().flatten() {
                         let (x, y) = (x.saturating_sub(dx), y.saturating_sub(dy));
                         if board.can_put(x, y, &piece) {
-                            put_any = true;
                             let new = board.put(x, y, &piece);
                             if !new.has_dead_zones() {
                                 let mut remaining = pieces.clone();
@@ -214,9 +215,7 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
                     piece = piece.rot();
                 }
             }
-            if put_any {
-                break 'out;
-            }
+            break 'out
         }
     }
 
