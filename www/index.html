@@ -474,7 +474,7 @@ dlc road to gehenna
       mouse_pos.x /= scale
       mouse_pos.y /= scale
       Canvas.width = scale * (board_rect.x + board_rect.width + 2 * RENDER_PADDING + 2 * (RENDER_PADDING + MAX_SHAPE_SIZE))
-      Canvas.height = scale * (board_rect.y + board_rect.height + RENDER_PADDING + Math.floor(Object.keys(Shape).length / 2) * (RENDER_PADDING + MAX_SHAPE_SIZE))
+      Canvas.height = scale * (Math.max(board_rect.y + board_rect.height + RENDER_PADDING, Math.ceil(Object.keys(Shape).length / 2) * (RENDER_PADDING + MAX_SHAPE_SIZE)))
       dirty = true
     }
 
