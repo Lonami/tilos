@@ -460,6 +460,8 @@ dlc road to gehenna
       height: 0,
     }
     let pieces = []
+    const placeholder_pieces = Object.values(SHAPES).map((s) => new Piece(s))
+    placeholder_pieces.forEach((piece) => piece.color = '#f7f7f7')
     const mouse_pos = {
       x: 0,
       y: 0,
@@ -609,6 +611,23 @@ dlc road to gehenna
         ctx.closePath()
         ctx.stroke()
       }
+
+      ctx.font = "1px serif";
+      ctx.setLineDash([0.25, 0.25]);
+      placeholder_pieces.forEach((piece) => {
+        piece.render()
+        let [x, y] = piece.pos();
+        x += piece.width + 0.5
+        y += piece.height
+        if (!piece.contains(x - 1, y - 0.5)) {
+          x -= 1
+        }
+        ctx.fillText(pieces.filter((p) =>
+          p.shape === piece.shape
+          && p.location === Location.HOLDER
+        ).length.toString(), x, y);
+      });
+      ctx.setLineDash([]);
 
       // render in reverse (mouseover checks going forward)
       for (let i = pieces.length; i--;) {
