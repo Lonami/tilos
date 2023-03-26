@@ -154,6 +154,18 @@ impl Shape {
                 .any(|(j, c)| !*c && self.is_dead(j, i))
         })
     }
+
+    fn fit_cells_to_orig(&self) -> [Option<(usize, usize)>; 2] {
+        // this method probably won't work with all shapes.
+        // it assumes very simple ones, and it only tries two positions.
+        if self.rows[0][0] {
+            return [Some((0, 0)), None];
+        }
+
+        let hx = self.rows[0].iter().position(|c| *c).unwrap();
+        let hy = self.rows.iter().position(|row| row[0]).unwrap();
+        [Some((hx, 0)), Some((0, hy))]
+    }
 }
 
 fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
@@ -164,8 +176,7 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
     let mut tried_pieces = Vec::new();
     let mut put_any = false;
 
-    'out:
-    for y in 0..board.height() {
+    'out: for y in 0..board.height() {
         for x in 0..board.width() {
             tried_pieces.clear();
             for (i, mut piece) in pieces.iter().cloned().enumerate() {
@@ -175,24 +186,28 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
                         continue;
                     }
                     tried_pieces.push(piece.clone());
-                    if board.can_put(x, y, &piece) {
-                        put_any = true;
-                        let new = board.put(x, y, &piece);
-                        if !new.has_dead_zones() {
-                            let mut remaining = pieces.clone();
-                            remaining.swap_remove(i);
 
-                            if let Some(mut steps) = solve(new, remaining) {
-                                steps.insert(
-                                    0,
-                                    Step {
-                                        x,
-                                        y,
-                                        piece: piece.clone(),
-                                        r,
-                                    },
-                                );
-                                return Some(steps);
+                    for (dx, dy) in piece.fit_cells_to_orig().into_iter().flatten() {
+                        let (x, y) = (x.saturating_sub(dx), y.saturating_sub(dy));
+                        if board.can_put(x, y, &piece) {
+                            put_any = true;
+                            let new = board.put(x, y, &piece);
+                            if !new.has_dead_zones() {
+                                let mut remaining = pieces.clone();
+                                remaining.swap_remove(i);
+
+                                if let Some(mut steps) = solve(new, remaining) {
+                                    steps.insert(
+                                        0,
+                                        Step {
+                                            x,
+                                            y,
+                                            piece: piece.clone(),
+                                            r,
+                                        },
+                                    );
+                                    return Some(steps);
+                                }
                             }
                         }
                     }
