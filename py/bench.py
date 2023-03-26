@@ -4,7 +4,7 @@ import re
 import time
 from pathlib import Path
 
-BENCH_TIMEOUT = 30
+BENCH_TIMEOUT = 5
 
 root_dir = Path(__file__).absolute().parent.parent
 puzzles_file = root_dir / 'www' / 'index.html'

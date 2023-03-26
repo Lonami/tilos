@@ -1,15 +1,21 @@
 use owo_colors::OwoColorize as _;
 use std::env;
 use std::fmt::{self, Write as _};
+use std::mem;
 use std::process;
 
 const ERR_NO_SOLUTION: i32 = 1;
 const ERR_BAD_ARGS: i32 = 2;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct Shape {
-    rows: Vec<Vec<bool>>,
+struct BitMatrix {
+    matrix: u64,
+    width: u8,
+    height: u8,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Shape(BitMatrix);
 
 #[derive(Clone, Debug)]
 struct Step {
@@ -26,54 +32,99 @@ struct Settings {
     pieces: Vec<Shape>,
 }
 
-impl Shape {
-    fn new(rows: Vec<Vec<bool>>) -> Self {
-        return Self { rows };
-    }
-
-    fn from_str(string: &str) -> Self {
-        let mut rows = Vec::new();
-        for line in string.trim().lines() {
-            let mut row = Vec::new();
-            for c in line.chars().filter(|c| !c.is_whitespace()) {
-                row.push(c != '_');
-            }
-            row.shrink_to_fit();
-            rows.push(row)
+impl BitMatrix {
+    fn new() -> Self {
+        Self {
+            matrix: 0,
+            width: 0,
+            height: 0,
         }
-        rows.shrink_to_fit();
-        Self::new(rows)
     }
 
     fn with_size(width: usize, height: usize) -> Self {
-        Self::new(vec![vec![false; width]; height])
+        if width < 1 || height < 1 {
+            panic!("size must be at least 1x1");
+        }
+        let mut matrix = Self::new();
+        matrix.expand_to(width - 1, height - 1, false);
+        matrix
+    }
+
+    fn at(&self, x: usize, y: usize) -> bool {
+        if x >= self.width as usize || y >= self.height as usize {
+            panic!("index ({}, {}) out of bounds", x, y);
+        }
+        let i = (y as u8) * self.width + (x as u8);
+        (self.matrix & (1 << i)) != 0
+    }
+
+    fn set(&mut self, x: usize, y: usize, bit: bool) {
+        if x >= self.width as usize || y >= self.height as usize {
+            panic!("index ({}, {}) out of bounds", x, y);
+        }
+        let i = (y as u8) * self.width + (x as u8);
+        if bit {
+            self.matrix |= 1 << i;
+        } else {
+            self.matrix &= !(1 << i);
+        }
+    }
+
+    fn expand_to(&mut self, x: usize, y: usize, bit: bool) {
+        if x * y > mem::size_of_val(&self.matrix) * 8 {
+            panic!("backing storage cannot fit {}x{} elements", x, y);
+        }
+        self.width = self.width.max(x as u8 + 1);
+        self.height = self.height.max(y as u8 + 1);
+        self.set(x, y, bit);
+    }
+}
+
+impl Shape {
+    fn new(matrix: BitMatrix) -> Self {
+        Self(matrix)
+    }
+
+    fn from_str(string: &str) -> Self {
+        let mut matrix = BitMatrix::new();
+        for (i, line) in string.trim().lines().enumerate() {
+            for (j, c) in line.chars().filter(|c| !c.is_whitespace()).enumerate() {
+                matrix.expand_to(j, i, c != '_');
+            }
+        }
+        Self::new(matrix)
+    }
+
+    fn with_size(width: usize, height: usize) -> Self {
+        Self::new(BitMatrix::with_size(width, height))
     }
 
     fn width(&self) -> usize {
-        self.rows[0].len()
+        self.0.width as _
     }
 
     fn height(&self) -> usize {
-        self.rows.len()
+        self.0.height as _
     }
 
     fn rot(&self) -> Self {
-        let mut new_rows = vec![vec![false; self.height()]; self.width()];
+        let mut new = BitMatrix::with_size(self.height(), self.width());
         for i in 0..self.height() {
             for j in 0..self.width() {
-                new_rows[j][self.height() - i - 1] = self.rows[i][j];
+                new.set(self.height() - i - 1, j, self.0.at(j, i));
             }
         }
-        Self::new(new_rows)
+        Self::new(new)
     }
 
     fn flip(&self) -> Self {
-        Self::new(
-            self.rows
-                .iter()
-                .map(|row| row.iter().copied().rev().collect())
-                .collect(),
-        )
+        let mut new = BitMatrix::with_size(self.width(), self.height());
+        for i in 0..self.height() {
+            for j in 0..self.width() {
+                new.set(self.width() - j - 1, i, self.0.at(j, i));
+            }
+        }
+        Self::new(new)
     }
 
     fn can_put(&self, x: usize, y: usize, other: &Self) -> bool {
@@ -83,7 +134,7 @@ impl Shape {
 
         for i in 0..other.height() {
             for j in 0..other.width() {
-                if other.rows[i][j] && self.rows[y + i][x + j] {
+                if other.0.at(j, i) && self.0.at(x + j, y + i) {
                     return false;
                 }
             }
@@ -93,20 +144,24 @@ impl Shape {
     }
 
     fn put(&self, x: usize, y: usize, other: &Self) -> Self {
-        let mut new = self.rows.clone();
+        let mut new = self.0.clone();
         for i in 0..other.height() {
             for j in 0..other.width() {
-                new[y + i][x + j] |= other.rows[i][j]
+                if other.0.at(j, i) {
+                    new.set(x + j, y + i, true);
+                }
             }
         }
-
-        Shape::new(new)
+        Self::new(new)
     }
 
     fn len(&self) -> usize {
-        self.rows
-            .iter()
-            .map(|row| row.iter().map(|c| *c as usize).sum::<usize>())
+        (0..self.height())
+            .map(|i| {
+                (0..self.width())
+                    .map(|j| self.0.at(j, i) as usize)
+                    .sum::<usize>()
+            })
             .sum()
     }
 
@@ -115,7 +170,7 @@ impl Shape {
             && (x as usize) < self.width()
             && 0 <= y
             && (y as usize) < self.height()
-            && !self.rows[y as usize][x as usize]
+            && !self.0.at(x as usize, y as usize)
     }
 
     fn is_dead(&self, x: usize, y: usize) -> bool {
@@ -151,22 +206,19 @@ impl Shape {
     }
 
     fn has_dead_zones(&self) -> bool {
-        self.rows.iter().enumerate().any(|(i, row)| {
-            row.iter()
-                .enumerate()
-                .any(|(j, c)| !*c && self.is_dead(j, i))
-        })
+        (0..self.height())
+            .any(|i| (0..self.width()).any(|j| !self.0.at(j, i) && self.is_dead(j, i)))
     }
 
     fn fit_cells_to_orig(&self) -> [Option<(usize, usize)>; 2] {
         // this method probably won't work with all shapes.
         // it assumes very simple ones, and it only tries two positions.
-        if self.rows[0][0] {
+        if self.0.at(0, 0) {
             return [Some((0, 0)), None];
         }
 
-        let hx = self.rows[0].iter().position(|c| *c).unwrap();
-        let hy = self.rows.iter().position(|row| row[0]).unwrap();
+        let hx = (0..self.width()).position(|j| self.0.at(j, 0)).unwrap();
+        let hy = (0..self.height()).position(|i| self.0.at(0, i)).unwrap();
         [Some((hx, 0)), Some((0, hy))]
     }
 }
@@ -180,7 +232,7 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
 
     'out: for y in 0..board.height() {
         for x in 0..board.width() {
-            if board.rows[y][x] {
+            if board.0.at(x, y) {
                 continue;
             }
             tried_pieces.clear();
@@ -227,9 +279,9 @@ fn solve(board: Shape, pieces: Vec<Shape>) -> Option<Vec<Step>> {
 
 impl fmt::Display for Shape {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for row in self.rows.iter() {
-            for c in row {
-                f.write_str(if *c { "# " } else { "_ " })?;
+        for i in 0..self.height() {
+            for j in 0..self.width() {
+                f.write_str(if self.0.at(j, i) { "# " } else { "_ " })?;
             }
             f.write_str("\n")?;
         }
@@ -370,9 +422,9 @@ fn render_step(board: &Shape, step: &Step) -> String {
         }
 
         for j in 0..board.width() {
-            if board.rows[i][j] {
+            if board.0.at(j, i) {
                 result.push_str("██");
-            } else if board_after.rows[i][j] {
+            } else if board_after.0.at(j, i) {
                 write!(result, "{}", "██".green()).unwrap();
             } else {
                 result.push_str("  ");
@@ -383,9 +435,13 @@ fn render_step(board: &Shape, step: &Step) -> String {
 
         if i < orig_piece.height() {
             result.push_str(" ");
-            orig_piece.rows[i]
-                .iter()
-                .for_each(|c| result.push_str(if *c { "██" } else { "  " }));
+            for j in 0..orig_piece.width() {
+                result.push_str(if orig_piece.0.at(j, i) {
+                    "██"
+                } else {
+                    "  "
+                });
+            }
         }
 
         result.push_str("\n");
@@ -481,6 +537,62 @@ mod tests {
             ",
         )
         .has_dead_zones());
+    }
+
+    #[test]
+    fn check_renders_itself() {
+        let settings =
+            parse_args(vec!["", "0", "0", "tilosLS"].into_iter().map(String::from)).unwrap();
+
+        settings
+            .pieces
+            .into_iter()
+            .for_each(|piece| assert_eq!(Shape::from_str(&format!("{}", piece)), piece));
+    }
+
+    #[test]
+    fn check_flips_back_itself() {
+        let settings =
+            parse_args(vec!["", "0", "0", "tilos"].into_iter().map(String::from)).unwrap();
+
+        settings
+            .pieces
+            .into_iter()
+            .for_each(|piece| assert_eq!(piece.flip().flip(), piece));
+    }
+
+    #[test]
+    fn test_puts_itself() {
+        let settings = parse_args(vec!["", "0", "0", "t"].into_iter().map(String::from)).unwrap();
+
+        let piece = settings.pieces.into_iter().next().unwrap();
+        assert_eq!(
+            Shape::with_size(piece.width(), piece.height()).put(0, 0, &piece),
+            piece
+        );
+    }
+
+    #[test]
+    fn test_put_respects_filled() {
+        let a = Shape::from_str(
+            "
+            # _ _ _
+            # # # _
+            ",
+        );
+        let b = Shape::from_str(
+            "
+            _ # # #
+            _ _ _ #
+            ",
+        );
+        let c = Shape::from_str(
+            "
+            # # # #
+            # # # #
+            ",
+        );
+        assert_eq!(a.put(0, 0, &b), c);
     }
 
     #[test]
