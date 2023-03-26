@@ -41,12 +41,14 @@ subprocess.run(('cargo', 'build', '--release'))
 
 # bench
 durations = []
+solved = 0
 for puzzle in puzzles:
     print('trying to solve...', ' :: '.join(puzzle['section']))
     start = time.time()
     try:
         subprocess.run((str(executable), *puzzle['args']), check=True, timeout=BENCH_TIMEOUT, stdout=subprocess.DEVNULL)
         took = time.time() - start
+        solved += 1
         print(f'success! found solution in {took:.3f}s')
     except subprocess.CalledProcessError:
         took = time.time() - start
@@ -57,7 +59,7 @@ for puzzle in puzzles:
     durations.append(took)
 
 print(
-    f'finished {len(puzzles)} puzzles in {sum(durations):.3f}s'
+    f'solved {solved}/{len(puzzles)} puzzles in {sum(durations):.3f}s'
     f' (mean={statistics.mean(durations):.3f}s,'
     f' median={statistics.median(durations):.3f}s,'
     f' max={max(durations):.3f}s,'
