@@ -12,6 +12,14 @@
       border: 1px solid #000;
     }
 
+    #celebration {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border: none;
+      pointer-events: none;
+    }
+
     .rows {
       display: flex;
       flex-direction: row;
@@ -25,6 +33,7 @@
 </head>
 
 <body class="rows">
+  <canvas id="celebration"></canvas>
   <div>
     <h1>tilos</h1>
     <button id="reset">reset</button>
@@ -202,6 +211,7 @@ dlc road to gehenna
   <script>
 
     // html elements
+    const Celebration = document.getElementById('celebration')
     const Reset = document.getElementById('reset')
     const Scale = document.getElementById('scale')
     const Puzzle = document.getElementById('puzzle')
@@ -217,6 +227,15 @@ dlc road to gehenna
     const Canvas = document.getElementById('canvas')
 
     // helper functions
+    const randRange = (low, high) => {
+      return low + Math.random() * (high - low)
+    }
+
+    const rotate = (x, y, theta) => [
+      x * Math.cos(theta) - y * Math.sin(theta),
+      y * Math.cos(theta) + x * Math.sin(theta),
+    ]
+
     const parseSvgLikePath = (path) => {
       let width = 0
       let height = 0
@@ -304,6 +323,11 @@ dlc road to gehenna
         }
       })
       return parsed
+    }
+
+    const startWinAnimation = () => {
+      confettis.push(...[...Array(Math.floor(randRange(90, 150)))].map(() => new Confetti(page_mouse_pos.x, page_mouse_pos.y)))
+      dirty = true
     }
 
     // consts
@@ -416,10 +440,7 @@ dlc road to gehenna
 
         // rotate position to the inverse of the piece rotation so it's as-if it matches.
         const theta = -(this.rot * Math.PI / 180);
-        [x, y] = [
-          x * Math.cos(theta) - y * Math.sin(theta),
-          y * Math.cos(theta) + x * Math.sin(theta)
-        ]
+        [x, y] = rotate(x, y, theta)
         // same top-left-like alignment as it's done for pieces.
         switch (this.rot) {
           case 0: [dx, dy] = [0, 0]; break
@@ -444,7 +465,53 @@ dlc road to gehenna
       }
     }
 
+    const Confetti = class {
+      constructor(x, y) {
+        this.color = `hsl(${randRange(0, 360)}, ${randRange(60, 90)}%, ${randRange(60, 80)}%)`
+        this.x = x
+        this.y = y
+        this.w = randRange(6, 16)
+        this.h = randRange(4, 8)
+        this.r = randRange(0, 2 * Math.PI)
+        const scale = [1, 1, 1, 2, 2, 2, 3][Math.floor(randRange(0, 7))]
+        this.speedx = randRange(-300, 300) * scale
+        this.speedy = randRange(-300, 50) * scale
+        this.speedr = randRange(-2 * Math.PI, 2 * Math.PI) * scale
+        this.accely = 1200
+        this.vertices = [
+          [-this.w * 0.5, -this.h * 0.5],
+          [this.w * 0.5, -this.h * 0.5],
+          [this.w * 0.5, this.h * 0.5],
+          [-this.w * 0.5, this.h * 0.5],
+        ]
+      }
+
+      step(dt) {
+        this.speedy += this.accely * dt
+        this.x += this.speedx * dt
+        this.y += this.speedy * dt
+        this.r += this.speedr * dt
+      }
+
+      render() {
+        const vertices = this.vertices.map(([x, y]) => {
+          const [dx, dy] = rotate(x, y, this.r)
+          return [this.x + dx, this.y + dy]
+        })
+
+        celx.fillStyle = this.color
+        celx.beginPath()
+        celx.moveTo(...vertices[0])
+        celx.lineTo(...vertices[1])
+        celx.lineTo(...vertices[2])
+        celx.lineTo(...vertices[3])
+        celx.closePath()
+        celx.fill()
+      }
+    }
+
     // globals
+    const celx = Celebration.getContext("2d")
     const ctx = Canvas.getContext("2d")
     let dirty = true
     let lastFrame = 0
@@ -458,12 +525,11 @@ dlc road to gehenna
     let pieces = []
     const placeholder_pieces = Object.values(SHAPES).map((s) => new Piece(s))
     placeholder_pieces.forEach((piece) => piece.color = '#f7f7f7')
-    const mouse_pos = {
-      x: 0,
-      y: 0,
-    }
+    const page_mouse_pos = { x: 0, y: 0 }
+    const mouse_pos = { x: 0, y: 0 }
     let dragging_piece = null
     let loading_state = false
+    let confettis = []
 
     const updateScale = () => {
       mouse_pos.x *= scale
@@ -508,6 +574,11 @@ dlc road to gehenna
       window.location.hash = Puzzle.value
     }
 
+    const updateCelebrationSize = () => {
+      Celebration.width = window.innerWidth;
+      Celebration.height = window.innerHeight;
+    }
+
     const loadState = () => {
       loading_state = true
       let state
@@ -550,6 +621,7 @@ dlc road to gehenna
       updatePieces()
       saveState()
     }
+    updateCelebrationSize()
 
     // drawing
     const drawPath = (path) => {
@@ -638,11 +710,25 @@ dlc road to gehenna
         pieces[dragging_piece].render()
       }
 
-      dirty = false
+      celx.clearRect(0, 0, Celebration.width, Celebration.height)
+      let anyVisible = false
+      confettis.forEach((conf) => {
+        conf.step(dt)
+        if (conf.y + conf.h < Celebration.height) {
+          conf.render()
+          anyVisible = true
+        }
+      })
+      if (!anyVisible) {
+        confettis.length = 0
+      }
+
+      dirty = !!confettis.length
     }
 
     // handlers
     window.onhashchange = loadState
+    window.onresize = updateCelebrationSize
     Reset.onclick = loadState
     Scale.onchange = updateScale
     Puzzle.onchange = updatePuzzleHash
@@ -655,6 +741,11 @@ dlc road to gehenna
     SPieces.onchange = updatePieces
     LFlippedPieces.onchange = updatePieces
     SFlippedPieces.onchange = updatePieces
+
+    document.onmousemove = (e) => {
+      page_mouse_pos.x = e.clientX
+      page_mouse_pos.y = e.clientY
+    }
 
     Canvas.onmousemove = (e) => {
       const rect = Canvas.getBoundingClientRect()
@@ -688,10 +779,28 @@ dlc road to gehenna
           piece.location = Location.BOARD
           piece.x = Math.round(board_rect.width * bxp)
           piece.y = Math.round(board_rect.height * byp)
-        }
 
-        dragging_piece = null
-        dirty = true
+          // if every piece is on the board, check if all positions are covered. if so, play win animation.
+          if (pieces.every((p) => p.location === Location.BOARD)) {
+
+            let allCellsFull = true
+
+            for (let i = 0.5; allCellsFull && i <= board_rect.height; i += 1) {
+              for (let j = 0.5; allCellsFull && j <= board_rect.width; j += 1) {
+                if (!pieces.some((p) => p.contains(board_rect.x + j, board_rect.y + i))) {
+                  allCellsFull = false
+                }
+              }
+            }
+
+            if (allCellsFull) {
+              startWinAnimation()
+            }
+          }
+
+          dragging_piece = null
+          dirty = true
+        }
       } else {
         let found = pieces.findIndex((piece) => piece.contains(mouse_pos.x, mouse_pos.y))
         if (found !== -1) {
@@ -712,6 +821,8 @@ dlc road to gehenna
           piece.setPos(mouse_pos.x, mouse_pos.y)
           dirty = true
         }
+      } else if (e.key === 'w') {
+        startWinAnimation()
       }
     }
 
