@@ -40,44 +40,44 @@
     <div>
       <label for="puzzle">load talos' puzzle:</label>
       <select id="puzzle">
-        <option value="">none (custom)</option>
+        <option value="#w0h0p">none (custom)</option>
       </select>
     </div>
 
     <h3>puzzle</h3>
     <div>
       <label for="board_width">board width</label>
-      <input id="board_width" type="number" value="8" min="0">
+      <input id="board_width" type="number" value="0" min="0">
 
       <label for="board_height">board height</label>
-      <input id="board_height" type="number" value="6" min="0">
+      <input id="board_height" type="number" value="0" min="0">
     </div>
 
     <div>
       <label for="t_pieces">number of t-pieces</label>
-      <input id="t_pieces" type="number" value="2" min="0">
+      <input id="t_pieces" type="number" value="0" min="0">
     </div>
 
     <div>
       <label for="i_pieces">number of i-pieces</label>
-      <input id="i_pieces" type="number" value="1" min="0">
+      <input id="i_pieces" type="number" value="0" min="0">
     </div>
 
     <div>
       <label for="l_pieces">number of l-pieces</label>
-      <input id="l_pieces" type="number" value="2" min="0">
+      <input id="l_pieces" type="number" value="0" min="0">
       <label for="L_pieces">mirrored l-pieces</label>
-      <input id="L_pieces" type="number" value="3" min="0">
+      <input id="L_pieces" type="number" value="0" min="0">
     </div>
 
     <div>
       <label for="o_pieces">number of o-pieces</label>
-      <input id="o_pieces" type="number" value="2" min="0">
+      <input id="o_pieces" type="number" value="0" min="0">
     </div>
 
     <div>
       <label for="s_pieces">number of s-pieces</label>
-      <input id="s_pieces" type="number" value="2" min="0">
+      <input id="s_pieces" type="number" value="0" min="0">
       <label for="S_pieces">mirrored s-pieces</label>
       <input id="S_pieces" type="number" value="0" min="0">
     </div>
@@ -511,7 +511,7 @@ dlc road to gehenna
     const loadState = () => {
       loading_state = true
       let state
-      if (state = window.location.hash.match(/^#w(\d+)h(\d+)p([tilosLS]+)$/)) {
+      if (state = window.location.hash.match(/^#w(\d+)h(\d+)p([tilosLS]*)$/)) {
         BoardWidth.value = state[1]
         BoardHeight.value = state[2]
 
